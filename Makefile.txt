@@ -1,0 +1,10 @@
+all: sl
+
+sl: main.c mymalloc.c
+	gcc -Wall -Werror -o s1 main.c mymalloc.c
+	
+libsla: mymalloc.c
+		ar r libsla.a mymalloc.c
+		
+clean:
+		rm -f sl *.0
