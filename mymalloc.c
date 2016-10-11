@@ -10,8 +10,8 @@
 
 
 static char ALLMEM[MEMAMT];//memory block for malloc and free implementation
-static void * entryArr[MEMAMT/sizeof(MemEntry)+1]; //array of memEntry pointers
-static MemEntry * ptr = NULL;
+static MemEntry * entryArr[MEMAMT/sizeof(MemEntry)+1]; //array of memEntry pointers
+static MemEntry * myPtr = NULL;
 
 void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
 { 
@@ -26,21 +26,21 @@ void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
   MemEntry * construct = (MemEntry*) head; //make MemEntry pointer to head
   
   //if first malloc call
-  if(ptr == NULL)
+  if(myPtr == NULL)
     {
-      ptr = construct;
+      myPtr = construct;
       
-      construct->capacity = MEMAMT; //size of memory block
+      construct->capacity = size; //size of memory block
       construct->next = NULL; //set next pointer to null
       construct->prev = NULL;
-      construct->free = 1; //flag is true
+      construct->free = 0; //flag is false
 
       //search for first element index without a memEntry
       int i = 0;
       int ind = 0;
       for (i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
 	{ 
-	  if (entryArr[i] == 0)
+	  if (entryArr[i] == NULL)
 	    {
 	      ind = i;
 	      break;
@@ -52,48 +52,66 @@ void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
     }
   
   //not first malloc call
-  
-  MemEntry * search = construct; //MemEntry pointer to search through list
-  do //loop to continue running length of list till end is reached or return call is made
+  int i;
+  int currMemUsed = 0;
+  for(i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
     {
-      if(search->free != 1 || search->capacity < size )//if current position is not free or size too small
+      if (entryArr[i] == NULL)
 	{
-	  search = search->next;//update search address
-	}
-      else if(search->capacity < (size + sizeof(MemEntry)))//memory block is big enough and is free for memory block 
-	{
-	  search->free = 0;
-	  return (void*)search + sizeof(MemEntry);
+	  printf("CHECKING: %d\n", i);
+	  break;
 	}
       else
 	{
-	  //use free memory and create the MemEntry of the next block
-	  MemEntry * next;
+	  currMemUsed += entryArr[i]->capacity;
+	  //	  printf("CURRMEM: %d\n", currMemUsed);
+	}
+    }
+  MemEntry * search = construct; //MemEntry pointer to search through list
+  do //loop to continue running length of list till end is reached or return call is made
+    {
+      if(search->capacity < (size + sizeof(MemEntry) && search->free == 0))//memory block is big enough and is free for memory block
+	{
+	  printf("IF\n");
+          search->free = 1;
+          return (void*)search + sizeof(MemEntry);
+	}
+      else if((currMemUsed < MEMAMT) && ((MEMAMT - currMemUsed) >= size))
+	{
+	   printf("Here i am\n");
+          //use free memory and create the MemEntry of the next block
+          MemEntry * next;
 
-	  next = (MemEntry*)((char*)search + sizeof(MemEntry) + size);
+          next = (MemEntry*)((char*)search + sizeof(MemEntry) + size);
+	  printf("NEXT IS AT: %p\n", next);
 	  next->prev = search;
-	  next->next = search->next;
-	  next->capacity = search->capacity - sizeof(MemEntry) - size;
-	  next->free = 1;
-	        
-	  //search for first element index without a memEntry
-	  int i = 0;
-	  int ind = 0;
-	  for (i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
-	    {
-	      if (entryArr[i] == 0)
-		{
-		  ind = i;
-		  break;
-		}
-	    }
-	        
-	  entryArr[ind] = next; //store new entry in array
-	  search->capacity = size;
-	  search->free = 0;
-	  search->next = next;
+          next->next = search->next;
+          next->capacity = size;//search->capacity - sizeof(MemEntry) - size;
+          next->free = 0;
 
-	  return (void*)search + sizeof(MemEntry);
+          //search for first element index without a memEntry
+	  /*          int i = 0;
+          int ind = 0;
+          for (i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
+            {
+              if (entryArr[i] == 0)
+                {
+                  ind = i;
+                  break;
+                }
+		}*/
+
+          entryArr[i] = next; //store new entry in array
+          search->capacity = size;
+          search->free = 0;
+          search->next = next;
+
+          return (void*)(next + 1);
+	}
+      else //if current position is not free or size too small 
+	{
+	  printf("ELSE\n");
+          search = search->next;//update search address
 	}
         
     }while(search != NULL);
@@ -164,11 +182,3 @@ void myfree (void *ptr, char * filename, unsigned int linenum)
       anotherPtr->free = 1;
     }
 }
-
-
-
-
-
-
-
-
