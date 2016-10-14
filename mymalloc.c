@@ -1,8 +1,8 @@
-
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include "mymalloc.h"
+
 #define malloc( x ) mymalloc( x, __FILE__, __LINE__)
 #define free( x ) myfree( x, __FILE__, __LINE__)
 
@@ -11,112 +11,92 @@
 
 static char ALLMEM[MEMAMT];//memory block for malloc and free implementation
 static MemEntry * entryArr[MEMAMT/sizeof(MemEntry)+1]; //array of memEntry pointers
-static MemEntry * myPtr = NULL;
+static MemEntry * construct;
+static int currMemUsed = sizeof(MemEntry);
 
 void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
-{ 
+{
+  static int isFirst = 0;
+  MemEntry * next;
+  
+  printf("currMemUsed = %d\n", currMemUsed);
+
   //check is size is 0 or greater than available memory
-  if(size > MEMAMT || size == 0)
+  if(currMemUsed  > MEMAMT || size == 0)
     {
       printf("ERROR: Memory requested not available\n");
       return NULL;
     }
  
-  char *head = ALLMEM; //set head pointer to start of memory block
-  MemEntry * construct = (MemEntry*) head; //make MemEntry pointer to head
-  
   //if first malloc call
-  if(myPtr == NULL)
+  if(!isFirst)
     {
-      myPtr = construct;
-      
-      construct->capacity = size; //size of memory block
-      construct->next = NULL; //set next pointer to null
-      construct->prev = NULL;
-      construct->free = 0; //flag is false
+      isFirst = 1;
 
-      //search for first element index without a memEntry
-      int i = 0;
-      int ind = 0;
-      for (i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
-	{ 
-	  if (entryArr[i] == NULL)
-	    {
-	      ind = i;
-	      break;
-	    }
-	}
-      entryArr[ind] = construct; //set first array element to start of memory block
+      construct = (MemEntry*) ALLMEM; //make MemEntry pointer to head
+      construct->capacity = MEMAMT - sizeof(MemEntry); //size of memory block
+      construct->next = construct->prev = NULL;
+      construct->free = 'n'; //flag is false            
       
-      return ((void*)(construct+1)); //cast pointer to void * and increment by 1
+      next = construct + 1;
+      next->prev = construct;
+      next->next = (MemEntry*)((char*)(next+1) + size);
+      next->capacity = size;
+      next->free = 'n';
+
+      currMemUsed += (size + sizeof(MemEntry));
+      
+      //store to list
+      entryArr[0] = next;
+
+       return (void *)(next + 1);
     }
   
-  //not first malloc call
   int i;
-  int currMemUsed = 0;
   for(i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
     {
       if (entryArr[i] == NULL)
-	{
-	  printf("CHECKING: %d\n", i);
-	  break;
-	}
-      else
-	{
-	  currMemUsed += entryArr[i]->capacity;
-	  //	  printf("CURRMEM: %d\n", currMemUsed);
-	}
+        {
+          printf("CHECKING: %d\n", i);
+          break;
+        }
     }
+
+
   MemEntry * search = construct; //MemEntry pointer to search through list
-  do //loop to continue running length of list till end is reached or return call is made
+  while(search->next != NULL)
     {
-      if(search->capacity < (size + sizeof(MemEntry) && search->free == 0))//memory block is big enough and is free for memory block
-	{
-	  printf("IF\n");
-          search->free = 1;
+      printf("LOOPING...%p\n", search);
+      if(search->capacity <= size && search->free == 'y')//memory block is big enough and is free for memory block
+        {
+          printf("IF\n");
+          search->free = 'n';
           return (void*)search + sizeof(MemEntry);
-	}
-      else if((currMemUsed < MEMAMT) && ((MEMAMT - currMemUsed) >= size))
-	{
-	   printf("Here i am\n");
-          //use free memory and create the MemEntry of the next block
-          MemEntry * next;
+        }
+      search = search->next;
+    }
+ 
+   //no freed blocks were able to be used
+  if((currMemUsed < MEMAMT) && ((MEMAMT - currMemUsed - sizeof(MemEntry)) >= size))
+   {
+     printf("Here i am\n i = %d\n", i);
+     
+     //use free memory and create the MemEntry of the next block
+     
+     next = (MemEntry *)((char *)(entryArr[i-1]+1) + entryArr[i-1]->capacity);
+     printf("NEXT IS AT: %p\n", next);
+     next->prev = entryArr[i-1];
+     next->next = (MemEntry*)((char*)(next+1) + search->capacity);
+     next->capacity = size;
+     next->free = 'n';
 
-          next = (MemEntry*)((char*)search + sizeof(MemEntry) + size);
-	  printf("NEXT IS AT: %p\n", next);
-	  next->prev = search;
-          next->next = search->next;
-          next->capacity = size;//search->capacity - sizeof(MemEntry) - size;
-          next->free = 0;
-
-          //search for first element index without a memEntry
-	  /*          int i = 0;
-          int ind = 0;
-          for (i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
-            {
-              if (entryArr[i] == 0)
-                {
-                  ind = i;
-                  break;
-                }
-		}*/
-
-          entryArr[i] = next; //store new entry in array
-          search->capacity = size;
-          search->free = 0;
-          search->next = next;
-
-          return (void*)(next + 1);
-	}
-      else //if current position is not free or size too small 
-	{
-	  printf("ELSE\n");
-          search = search->next;//update search address
-	}
-        
-    }while(search != NULL);
-    
-  return NULL;
+     currMemUsed += (size + sizeof(MemEntry));
+     entryArr[i] = next; //store new entry in array
+     
+     return (void*)(next + 1);
+   }
+   
+ return NULL;
 }
 
 
@@ -132,13 +112,13 @@ void myfree (void *ptr, char * filename, unsigned int linenum)
   MemEntry * anotherPtr = NULL;
   anotherPtr = (MemEntry *)((char*)ptr - sizeof(MemEntry));
   int allocated = 0;
-
+  
   //check if pointer was allocated
   int ind  = 0;
   int i = 0;
   for(i = 0; i < (MEMAMT/sizeof(MemEntry)+1); i++)
     {
-      if(anotherPtr->free  == 0 && anotherPtr == entryArr[i])
+      if(anotherPtr->free  == 'n' && anotherPtr == entryArr[i])
 	{
 	  ind = i;
 	  allocated = 1;
@@ -150,15 +130,19 @@ void myfree (void *ptr, char * filename, unsigned int linenum)
     {
       printf("Fatal Error in free call line %d, in file %s\n", linenum, filename);
       printf("Pointer was not returned by malloc!\n");
+      return;
     }
-  else if(anotherPtr->prev != NULL && anotherPtr->prev->free == 1)//check if previous memory block is free
+  else if(anotherPtr->prev != NULL && anotherPtr->prev->free == 'y')//check if previous memory block is free
     {
-      printf("Merging previous with current!\n");
-      //merge previous block with current block
-      anotherPtr->prev->capacity += sizeof(MemEntry)+ anotherPtr->capacity;
-      entryArr[ind] = 0; //free entry in array
+      if(ind != 0)
+	{
+	  printf("Merging previous with current!\n");
+	  //merge previous block with current block
+	  anotherPtr->prev->capacity += sizeof(MemEntry)+ anotherPtr->capacity;
+	  entryArr[ind] = 0; //free entry in array
+	}
     }
-  else if(anotherPtr->next != NULL && anotherPtr->free == 1)//check if next memory block is free
+  else if(anotherPtr->next != NULL && anotherPtr->next->free == 'y')//check if next memory block is free
     {
       printf("Merging next with current!\n");
 
@@ -176,9 +160,9 @@ void myfree (void *ptr, char * filename, unsigned int linenum)
       anotherPtr->prev += sizeof(MemEntry) + anotherPtr->next->capacity;
       anotherPtr->next = anotherPtr->next->next;
     }
-  else //free pointer 
-    {
-      printf("Freeing pointer!\n");
-      anotherPtr->free = 1;
-    }
+   //free pointer 
+  
+  printf("Freeing pointer!\n");
+  anotherPtr->free = 'y';
+  currMemUsed -= (sizeof(MemEntry) + anotherPtr->capacity);
 }
