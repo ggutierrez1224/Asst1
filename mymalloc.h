@@ -3,10 +3,10 @@
 
 //structure to implement a linked list on the memory block allMem
 struct MemEntry_{
-  int capacity; //size of memory given to user
   struct MemEntry_ * next; //pointer to next memory block
   struct MemEntry_ * prev; //pointer to previous memory block
-  int free; //flag for whether memory block is free or not
+  char free; //flag for whether memory block is free or not
+  short capacity; //size of memory given to user
 };
 typedef struct MemEntry_ MemEntry;
 
