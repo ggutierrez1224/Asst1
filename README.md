@@ -1,4 +1,5 @@
-ASSIGNMENT 1: A better malloc() and free() 
+#ASSIGNMENT 1: A better malloc() and free() 
+
 Group 88: Gabriel Gutierrez (gg548) and Ayush Joshi (aj470)
 
 #Description:
