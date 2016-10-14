@@ -36,7 +36,7 @@ void testA()
 
 void testB()
 {
-  char *c;//[3000];
+  char *c;
   int i;
   for(i = 0; i < 3000; i++)
     {
