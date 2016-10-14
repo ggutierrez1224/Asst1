@@ -49,7 +49,22 @@ void testB()
 
 int main()
 {
-  testB();
-
+  int total = 0, avg, i;
+  struct timeval start, end;
+  
+  for(i = 0; i <= 100; i++)
+   {
+      gettimeofday(&start, NULL);
+      testA();
+      testB();
+      //testC();
+      //testD();
+      //testE();
+      //testF();
+      gettimeofday(&end, NULL);
+      total += (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
+   }
+  avg = total/100 ;
+  printf("Average run time: %dms\n", avg);
   return 0;
 }
