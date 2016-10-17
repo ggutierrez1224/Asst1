@@ -66,7 +66,6 @@ void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
   MemEntry * search = construct + 1; //MemEntry pointer to search through list
   while(search != NULL)
     {
-      //      printf("LOOPING...%p\n", search);
       if(search->capacity <= size && search->free == 'y')//memory block is big enough and is free for memory block
         {
           printf("IF\n");
@@ -84,7 +83,6 @@ void * mymalloc(unsigned int size, char * filename, unsigned int linenum)
      
      //use free memory and create the MemEntry of the next block 
      next = (MemEntry *)((char *)(entryArr[i-1]+1) + entryArr[i-1]->capacity);
-     printf("NEXT IS AT: %p\n", next);
      next->prev = entryArr[i-1];
      next->next = (MemEntry*)((char*)(next+1) + size);
      next->capacity = size;
