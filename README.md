@@ -14,5 +14,4 @@ Group 88: Gabriel Gutierrez (gg548) and Ayush Joshi (aj470)
 -	Free checks to make sure pointer being freed was passed by malloc
 -	Free checks if pointer was not already freed
 
-#Runtime Analysis:
 	
